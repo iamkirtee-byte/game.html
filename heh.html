@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Critter Catch!</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&family=Nunito:wght@600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cream: #FFF9E8;
+    --grass: #5FB84D;
+    --grass-dark: #479238;
+    --sky: #5AC0E8;
+    --orange: #FF9F45;
+    --pink: #FF5C7A;
+    --gold: #FFD447;
+    --ink: #2D2A26;
+    --white: #FFFFFF;
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+
+  body {
+    margin: 0;
+    font-family: 'Nunito', sans-serif;
+    background: linear-gradient(180deg, var(--sky) 0%, var(--sky) 55%, var(--grass) 55%, var(--grass-dark) 100%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  .game-wrap {
+    position: relative;
+    width: 100%;
+    max-width: 480px;
+    height: 100vh;
+    max-height: 800px;
+    background: linear-gradient(180deg, var(--sky) 0%, var(--sky) 55%, var(--grass) 55%, var(--grass-dark) 100%);
+    overflow: hidden;
+    box-shadow: 0 0 60px rgba(0,0,0,0.25);
+  }
+
+  /* clouds */
+  .cloud {
+    position: absolute;
+    background: white;
+    border-radius: 50px;
+    opacity: 0.9;
+    filter: drop-shadow(0 4px 0 rgba(0,0,0,0.03));
+  }
+  .cloud::before, .cloud::after {
+    content: '';
+    position: absolute;
+    background: white;
+    border-radius: 50%;
+  }
+
+  .hud {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 18px;
+    z-index: 20;
+    font-family: 'Fredoka', sans-serif;
+  }
+
+  .pill {
+    background: var(--white);
+    border-radius: 999px;
+    padding: 8px 16px;
+    font-weight: 700;
+    font-size: 18px;
+    color: var(--ink);
+    box-shadow: 0 4px 0 rgba(0,0,0,0.12);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .pill.timer { color: var(--pink); }
+  .pill.score { color: var(--orange); }
+
+  .combo-badge {
+    position: absolute;
+    top: 62px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 700;
+    color: var(--gold);
+    font-size: 15px;
+    text-shadow: 0 1px 0 rgba(0,0,0,0.3);
+    opacity: 0;
+    transition: opacity 0.2s;
+    z-index: 20;
+  }
+  .combo-badge.show { opacity: 1; }
+
+  .critter {
+    position: absolute;
+    font-size: 46px;
+    line-height: 1;
+    cursor: pointer;
+    transform-origin: bottom center;
+    animation: popup 0.35s cubic-bezier(.34,1.56,.64,1) both;
+    filter: drop-shadow(0 6px 4px rgba(0,0,0,0.15));
+    z-index: 10;
+    touch-action: manipulation;
+  }
+
+  @keyframes popup {
+    0% { transform: translateY(40px) scale(0.3); opacity: 0; }
+    60% { transform: translateY(-6px) scale(1.1); opacity: 1; }
+    100% { transform: translateY(0) scale(1); opacity: 1; }
+  }
+
+  .critter.caught {
+    animation: caught 0.35s ease forwards;
+    pointer-events: none;
+  }
+  @keyframes caught {
+    0% { transform: scale(1) rotate(0); }
+    100% { transform: scale(1.6) rotate(20deg); opacity: 0; }
+  }
+
+  .critter.fleeing {
+    animation: flee 0.4s ease forwards;
+  }
+  @keyframes flee {
+    0% { transform: scale(1); opacity: 1; }
+    100% { transform: translateY(50px) scale(0.5); opacity: 0; }
+  }
+
+  .float-text {
+    position: absolute;
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 700;
+    font-size: 22px;
+    pointer-events: none;
+    z-index: 30;
+    animation: floatUp 0.9s ease forwards;
+  }
+  @keyframes floatUp {
+    0% { transform: translateY(0); opacity: 1; }
+    100% { transform: translateY(-60px); opacity: 0; }
+  }
+
+  .grass-tuft {
+    position: absolute;
+    bottom: 0;
+    width: 28px;
+    height: 34px;
+    background: var(--grass-dark);
+    border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+    opacity: 0.5;
+  }
+
+  .overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(45,42,38,0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+    backdrop-filter: blur(2px);
+  }
+
+  .card {
+    background: var(--cream);
+    border-radius: 28px;
+    padding: 34px 30px;
+    text-align: center;
+    width: 82%;
+    max-width: 340px;
+    box-shadow: 0 12px 0 rgba(0,0,0,0.15);
+  }
+
+  .card h1 {
+    font-family: 'Fredoka', sans-serif;
+    font-size: 32px;
+    margin: 0 0 6px;
+    color: var(--pink);
+  }
+
+  .card .subtitle {
+    font-weight: 800;
+    color: var(--ink);
+    margin-bottom: 18px;
+    font-size: 15px;
+    line-height: 1.4;
+  }
+
+  .legend {
+    display: flex;
+    justify-content: center;
+    gap: 18px;
+    margin-bottom: 22px;
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--ink);
+  }
+  .legend div { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .legend span.emoji { font-size: 30px; }
+
+  .btn {
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 700;
+    font-size: 19px;
+    color: white;
+    background: var(--orange);
+    border: none;
+    border-radius: 999px;
+    padding: 14px 34px;
+    box-shadow: 0 6px 0 #d97d2b;
+    cursor: pointer;
+    transition: transform 0.08s;
+  }
+  .btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #d97d2b; }
+
+  .big-score {
+    font-family: 'Fredoka', sans-serif;
+    font-size: 54px;
+    color: var(--orange);
+    margin: 8px 0 4px;
+  }
+
+  .stars-row { font-size: 30px; margin-bottom: 14px; letter-spacing: 6px; }
+
+  @media (max-width: 400px) {
+    .critter { font-size: 40px; }
+    .card h1 { font-size: 26px; }
+  }
+</style>
+</head>
+<body>
+<div class="game-wrap" id="gameWrap">
+
+  <div class="hud">
+    <div class="pill timer">⏱ <span id="timeLeft">45</span>s</div>
+    <div class="pill score">⭐ <span id="scoreVal">0</span></div>
+  </div>
+  <div class="combo-badge" id="comboBadge"></div>
+
+  <div id="playfield" style="position:absolute; inset:0;"></div>
+
+  <!-- Start screen -->
+  <div class="overlay" id="startOverlay">
+    <div class="card">
+      <h1>Critter Catch!</h1>
+      <div class="subtitle">Tap the happy critters before they hop away.<br>Watch out for the grumpy skunk!</div>
+      <div class="legend">
+        <div><span class="emoji">🐰</span>+10</div>
+        <div><span class="emoji">🦊</span>+10</div>
+        <div><span class="emoji">🌟</span>+50</div>
+        <div><span class="emoji">🦨</span>−5</div>
+      </div>
+      <button class="btn" id="startBtn">Let's Play!</button>
+    </div>
+  </div>
+
+  <!-- End screen -->
+  <div class="overlay" id="endOverlay" style="display:none;">
+    <div class="card">
+      <h1 id="endTitle">Great Job!</h1>
+      <div class="big-score" id="finalScore">0</div>
+      <div class="stars-row" id="starsRow">⭐⭐⭐</div>
+      <div class="subtitle" id="endMsg">You're a critter-catching champion!</div>
+      <button class="btn" id="playAgainBtn">Play Again</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function () {
+  const playfield = document.getElementById('playfield');
+  const startOverlay = document.getElementById('startOverlay');
+  const endOverlay = document.getElementById('endOverlay');
+  const startBtn = document.getElementById('startBtn');
+  const playAgainBtn = document.getElementById('playAgainBtn');
+  const scoreVal = document.getElementById('scoreVal');
+  const timeLeftEl = document.getElementById('timeLeft');
+  const comboBadge = document.getElementById('comboBadge');
+  const finalScore = document.getElementById('finalScore');
+  const endTitle = document.getElementById('endTitle');
+  const endMsg = document.getElementById('endMsg');
+  const starsRow = document.getElementById('starsRow');
+  const gameWrap = document.getElementById('gameWrap');
+
+  const GOOD_CRITTERS = ['🐰','🦊','🐿️','🦉','🐢','🐸'];
+  const GOLD_CRITTER = '🌟';
+  const BAD_CRITTER = '🦨';
+
+  let score = 0;
+  let timeLeft = 45;
+  let timerId = null;
+  let spawnId = null;
+  let combo = 0;
+  let comboTimeout = null;
+  let running = false;
+  let audioCtx = null;
+
+  function beep(freq, dur, type) {
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = type || 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + dur);
+    } catch (e) { /* audio not available, ignore */ }
+  }
+
+  function rand(min, max) { return Math.random() * (max - min) + min; }
+
+  function spawnCritter() {
+    if (!running) return;
+    const rect = gameWrap.getBoundingClientRect();
+    const w = rect.width;
+    const h = rect.height;
+
+    let type, points, isBad = false, isGold = false;
+    const roll = Math.random();
+    if (roll < 0.12) { type = GOLD_CRITTER; points = 50; isGold = true; }
+    else if (roll < 0.32) { type = BAD_CRITTER; points = -5; isBad = true; }
+    else { type = GOOD_CRITTERS[Math.floor(Math.random() * GOOD_CRITTERS.length)]; points = 10; }
+
+    const el = document.createElement('div');
+    el.className = 'critter';
+    el.textContent = type;
+    const x = rand(20, w - 60);
+    const y = rand(h * 0.35, h - 90);
+    el.style.left = x + 'px';
+    el.style.top = y + 'px';
+    playfield.appendChild(el);
+
+    const lifespan = isGold ? 1000 : rand(1100, 1700);
+    let caught = false;
+
+    const fleeTimer = setTimeout(() => {
+      if (caught) return;
+      el.classList.add('fleeing');
+      setTimeout(() => el.remove(), 400);
+    }, lifespan);
+
+    el.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      if (caught || !running) return;
+      caught = true;
+      clearTimeout(fleeTimer);
+      handleCatch(el, x, y, points, isBad, isGold);
+    });
+
+    spawnId = setTimeout(spawnCritter, rand(500, 950));
+  }
+
+  function handleCatch(el, x, y, points, isBad, isGold) {
+    el.classList.add('caught');
+    setTimeout(() => el.remove(), 350);
+
+    if (isBad) {
+      combo = 0;
+      score = Math.max(0, score + points);
+      beep(160, 0.25, 'sawtooth');
+      showFloatText(x, y, points, '#FF5C7A', 'Yikes!');
+    } else {
+      combo += 1;
+      let bonus = points;
+      if (combo >= 5) bonus = Math.round(points * 1.5);
+      score += bonus;
+      beep(isGold ? 880 : 520 + combo * 15, 0.15, 'sine');
+      showFloatText(x, y, bonus, isGold ? '#FFD447' : '#5FB84D', isGold ? 'Golden!' : (combo >= 5 ? 'Combo!' : ''));
+      updateCombo();
+    }
+    scoreVal.textContent = score;
+  }
+
+  function showFloatText(x, y, points, color, label) {
+    const ft = document.createElement('div');
+    ft.className = 'float-text';
+    ft.style.left = x + 'px';
+    ft.style.top = y + 'px';
+    ft.style.color = color;
+    ft.textContent = (points > 0 ? '+' : '') + points + (label ? ' ' + label : '');
+    playfield.appendChild(ft);
+    setTimeout(() => ft.remove(), 900);
+  }
+
+  function updateCombo() {
+    if (combo >= 3) {
+      comboBadge.textContent = combo + 'x Combo! 🔥';
+      comboBadge.classList.add('show');
+      clearTimeout(comboTimeout);
+      comboTimeout = setTimeout(() => comboBadge.classList.remove('show'), 900);
+    }
+  }
+
+  function tick() {
+    timeLeft -= 1;
+    timeLeftEl.textContent = timeLeft;
+    if (timeLeft <= 0) endGame();
+  }
+
+  function startGame() {
+    score = 0;
+    timeLeft = 45;
+    combo = 0;
+    scoreVal.textContent = '0';
+    timeLeftEl.textContent = '45';
+    startOverlay.style.display = 'none';
+    endOverlay.style.display = 'none';
+    playfield.innerHTML = '';
+    running = true;
+    timerId = setInterval(tick, 1000);
+    spawnCritter();
+  }
+
+  function endGame() {
+    running = false;
+    clearInterval(timerId);
+    clearTimeout(spawnId);
+    playfield.querySelectorAll('.critter').forEach(c => c.remove());
+
+    finalScore.textContent = score;
+    let stars = '⭐';
+    let title = 'Nice Try!';
+    let msg = 'Every critter catcher starts somewhere. Play again?';
+    if (score >= 300) { stars = '⭐⭐⭐'; title = 'Amazing!'; msg = "You're a Critter Catch champion!"; }
+    else if (score >= 150) { stars = '⭐⭐'; title = 'Great Job!'; msg = 'Awesome catching skills!'; }
+    else if (score >= 50) { stars = '⭐'; title = 'Good Start!'; msg = 'Keep practicing, you got this!'; }
+    starsRow.textContent = stars;
+    endTitle.textContent = title;
+    endMsg.textContent = msg;
+    endOverlay.style.display = 'flex';
+  }
+
+  startBtn.addEventListener('click', startGame);
+  playAgainBtn.addEventListener('click', startGame);
+})();
+</script>
+</body>
+</html>
